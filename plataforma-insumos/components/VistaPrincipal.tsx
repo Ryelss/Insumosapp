@@ -7,41 +7,38 @@ import SidebarCarrito from './SidebarCarrito';
 
 export default function VistaPrincipal({ tintas, establecimientos }: { tintas: any[], establecimientos: any[] }) {
   const establecimiento = useCartStore((state) => state.establecimiento);
-  const setEstablecimiento = useCartStore((state) => state.setEstablecimiento);
-  const limpiarCarrito = useCartStore((state) => state.limpiarCarrito); // Necesario para vaciar al expirar
+  const setSesion = useCartStore((state) => state.setSesion);
+  const limpiarCarrito = useCartStore((state) => state.limpiarCarrito);
   
   const [seleccion, setSeleccion] = useState("");
+  const [correoInput, setCorreoInput] = useState(""); // Estado para el correo
   const [montado, setMontado] = useState(false);
   
   useEffect(() => setMontado(true), []);
 
-  // --- TEMPORIZADOR DE INACTIVIDAD (5 MINUTOS) ---
+  // TEMPORIZADOR DE INACTIVIDAD
   useEffect(() => {
     let timeout: NodeJS.Timeout;
 
     const reiniciarTemporizador = () => {
       clearTimeout(timeout);
-      // Solo inicia el contador si hay un colegio logueado
       if (establecimiento) {
         timeout = setTimeout(() => {
           alert("⏳ Sesión cerrada por inactividad. Por seguridad, su selección ha sido cancelada.");
           limpiarCarrito();
-          setEstablecimiento(null); // Esto lo devuelve a la pantalla de inicio
-        }, 5 * 60 * 1000); // 5 minutos = 300,000 ms
+          setSesion(null, null); // Cerramos sesión completa
+        }, 5 * 60 * 1000); 
       }
     };
 
     if (establecimiento) {
-      reiniciarTemporizador(); // Inicia la cuenta regresiva al loguearse
-      
-      // Eventos que se consideran "actividad"
+      reiniciarTemporizador();
       window.addEventListener('mousemove', reiniciarTemporizador);
       window.addEventListener('keydown', reiniciarTemporizador);
       window.addEventListener('click', reiniciarTemporizador);
       window.addEventListener('scroll', reiniciarTemporizador);
     }
 
-    // Limpieza al desmontar o cerrar sesión
     return () => {
       clearTimeout(timeout);
       window.removeEventListener('mousemove', reiniciarTemporizador);
@@ -49,13 +46,21 @@ export default function VistaPrincipal({ tintas, establecimientos }: { tintas: a
       window.removeEventListener('click', reiniciarTemporizador);
       window.removeEventListener('scroll', reiniciarTemporizador);
     };
-  }, [establecimiento, limpiarCarrito, setEstablecimiento]);
-  // ----------------------------------------------
+  }, [establecimiento, limpiarCarrito, setSesion]);
 
   const manejarIngreso = (e: React.FormEvent) => {
     e.preventDefault();
     const est = establecimientos.find(e => e.rbd === Number(seleccion));
-    if (est) setEstablecimiento({ rbd: est.rbd, nombre: est.nombre });
+    
+    // Validación de seguridad para asegurar que pongan un correo válido
+    if (!correoInput.includes('@')) {
+      alert("⚠️ Por favor, ingrese un correo válido.");
+      return;
+    }
+
+    if (est) {
+      setSesion({ rbd: est.rbd, nombre: est.nombre }, correoInput);
+    }
   };
 
   if (!montado) return null;
@@ -64,22 +69,38 @@ export default function VistaPrincipal({ tintas, establecimientos }: { tintas: a
     return (
       <div className="max-w-md mx-auto mt-20 bg-white p-8 rounded-xl shadow-lg border border-gray-200">
         <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-[#005EAD]">Sistema Insumos de Impresión</h2>
-          <p className="text-gray-500 mt-2 text-sm">Por favor, identifique su establecimiento para acceder al sistema .</p>
+          <h2 className="text-2xl font-bold text-[#005EAD]">Bienvenido al DAEM</h2>
+          <p className="text-gray-500 mt-2 text-sm">Identifique su establecimiento y su correo institucional para acceder.</p>
         </div>
         <form onSubmit={manejarIngreso} className="space-y-4">
-          <select 
-            value={seleccion}
-            onChange={(e) => setSeleccion(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#005EAD]"
-            required
-          >
-            <option value="" disabled>-- Seleccione su recinto --</option>
-            {establecimientos.map(est => (
-              <option key={est.rbd} value={est.rbd}>{est.nombre}</option>
-            ))}
-          </select>
-          <button type="submit" className="w-full bg-[#6EAF26] text-white font-bold py-3 rounded-lg hover:bg-[#5c9320] transition-colors shadow-sm">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Establecimiento</label>
+            <select 
+              value={seleccion}
+              onChange={(e) => setSeleccion(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#005EAD]"
+              required
+            >
+              <option value="" disabled>-- Seleccione su recinto --</option>
+              {establecimientos.map(est => (
+                <option key={est.rbd} value={est.rbd}>{est.nombre}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico (Gmail/Institucional)</label>
+            <input 
+              type="email"
+              placeholder="ejemplo@educasanantonio.cl"
+              value={correoInput}
+              onChange={(e) => setCorreoInput(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-[#005EAD]"
+              required
+            />
+          </div>
+
+          <button type="submit" className="w-full mt-2 bg-[#6EAF26] text-white font-bold py-3 rounded-lg hover:bg-[#5c9320] transition-colors shadow-sm">
             Ingresar al Catálogo
           </button>
         </form>
@@ -95,7 +116,6 @@ export default function VistaPrincipal({ tintas, establecimientos }: { tintas: a
         </div>
         <CatalogoFiltrado tintas={tintas} />
       </div>
-
       <aside className="w-full lg:w-[400px] flex-shrink-0">
         <SidebarCarrito />
       </aside>

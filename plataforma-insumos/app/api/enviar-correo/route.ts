@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-import * as XLSX from 'xlsx'; // Importamos la nueva librería
+import * as XLSX from 'xlsx';
 
 export async function POST(request: Request) {
   try {
-    const { establecimiento, detalles } = await request.json();
+    // Recibimos el correoSolicitante desde el frontend
+    const { establecimiento, correoSolicitante, detalles } = await request.json();
 
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
@@ -19,7 +20,6 @@ export async function POST(request: Request) {
       }
     });
 
-    // 1. Armamos el HTML del cuerpo del correo
     const listaHtml = detalles.map((item: any) =>
       `<li style="margin-bottom: 5px;">
         <strong>${item.cantidadCarrito}x</strong> ${item.nombre_producto} 
@@ -27,33 +27,33 @@ export async function POST(request: Request) {
        </li>`
     ).join('');
 
-    // 2. CREACIÓN DEL ARCHIVO EXCEL
-    // Mapeamos los datos para que las columnas tengan nombres ordenados
+    // NUEVO: Agregamos el "Correo Solicitante" a las columnas del Excel
     const datosExcel = detalles.map((item: any) => ({
       'Establecimiento': establecimiento,
+      'Correo Solicitante': correoSolicitante,
       'Insumo': item.nombre_producto,
       'Marca': item.marca || 'Genérico',
       'Tipo': item.tipo || 'N/A',
       'Cantidad Solicitada': item.cantidadCarrito
     }));
 
-    // Creamos la hoja de cálculo y el libro
     const worksheet = XLSX.utils.json_to_sheet(datosExcel);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Detalle Insumos");
-
-    // Convertimos el libro a un Buffer (archivo temporal en memoria)
     const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
-    // 3. Estructuramos el correo con el adjunto
     const mailOptions = {
       from: '"Plataforma Insumos DAEM" <TU_CORREO_DE_SISTEMAS@gmail.com>',
       to: "admin@educasanantonio.cl",
-      subject: `🚨 Nuevo Pedido de Insumos - ${establecimiento}`,
+      subject: `🚨 Nuevo Pedido - ${establecimiento}`,
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
           <h2 style="color: #005EAD;">Nuevo pedido de insumos ingresado</h2>
           <p style="font-size: 16px;">El establecimiento <strong>${establecimiento}</strong> acaba de realizar una solicitud a través de la plataforma.</p>
+          
+          <div style="background-color: #f9f9f9; padding: 10px; border-left: 4px solid #F09B1A; margin-bottom: 20px;">
+            <p style="margin: 0;"><strong>Usuario Responsable:</strong> <a href="mailto:${correoSolicitante}">${correoSolicitante}</a></p>
+          </div>
           
           <h3 style="border-bottom: 2px solid #6EAF26; padding-bottom: 5px;">Detalle del pedido:</h3>
           <ul>
@@ -61,25 +61,19 @@ export async function POST(request: Request) {
           </ul>
           
           <p style="margin-top: 20px; font-weight: bold; color: #333;">
-            📎 Se ha adjuntado un archivo Excel con el detalle de esta solicitud.
-          </p>
-          
-          <p style="color: #888; font-size: 12px; margin-top: 30px;">
-            Este es un correo automático generado por la Plataforma de Suministros DAEM San Antonio.
+            📎 Se ha adjuntado un archivo Excel con el detalle y la trazabilidad de esta solicitud.
           </p>
         </div>
       `,
       attachments: [
         {
-          // Genera un nombre dinámico, ej: Pedido_Escuela_España.xlsx
           filename: `Pedido_${establecimiento.replace(/\s+/g, '_')}.xlsx`,
-          content: excelBuffer // Aquí pasamos el archivo que generamos en memoria
+          content: excelBuffer 
         }
       ]
     };
 
     await transporter.sendMail(mailOptions);
-    
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error enviando correo:", error);

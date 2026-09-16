@@ -19,16 +19,19 @@ export interface Establecimiento {
 
 interface CartStore {
   carrito: CartItem[];
-  establecimiento: Establecimiento | null; // Guardará quién está usando el sistema
+  establecimiento: Establecimiento | null;
+  usuarioCorreo: string | null; // NUEVO: Guardará el correo del usuario
   agregarAlCarrito: (tinta: Tinta, cantidadAAgregar: number) => void;
   removerDelCarrito: (id: number) => void;
   limpiarCarrito: () => void;
-  setEstablecimiento: (est: Establecimiento | null) => void;
+  // NUEVO: Reemplazamos setEstablecimiento por setSesion para guardar ambos datos juntos
+  setSesion: (est: Establecimiento | null, correo: string | null) => void; 
 }
 
 export const useCartStore = create<CartStore>((set) => ({
   carrito: [],
   establecimiento: null,
+  usuarioCorreo: null,
 
   agregarAlCarrito: (tinta, cantidadAAgregar) => set((state) => {
     const existe = state.carrito.find((item) => item.id === tinta.id);
@@ -49,6 +52,5 @@ export const useCartStore = create<CartStore>((set) => ({
 
   limpiarCarrito: () => set({ carrito: [] }),
   
-  // Función para guardar qué colegio se logueó
-  setEstablecimiento: (est) => set({ establecimiento: est })
+  setSesion: (est, correo) => set({ establecimiento: est, usuarioCorreo: correo })
 }));

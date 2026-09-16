@@ -5,12 +5,13 @@ import Link from 'next/link';
 
 export default function Navbar() {
   const establecimiento = useCartStore((state) => state.establecimiento);
-  const setEstablecimiento = useCartStore((state) => state.setEstablecimiento);
-  const limpiarCarrito = useCartStore((state) => state.limpiarCarrito); // Traemos la función para vaciar
+  const usuarioCorreo = useCartStore((state) => state.usuarioCorreo);
+  const setSesion = useCartStore((state) => state.setSesion);
+  const limpiarCarrito = useCartStore((state) => state.limpiarCarrito); 
 
   const manejarSalida = () => {
-    setEstablecimiento(null); // Borra la escuela actual
-    limpiarCarrito();         // Vacía el carro por seguridad
+    setSesion(null, null); // Borra escuela y correo
+    limpiarCarrito();      // Vacía el carro
   };
 
   return (
@@ -19,15 +20,15 @@ export default function Navbar() {
         <h1 className="text-xl font-bold tracking-wide">Plataforma de Insumos DAEM</h1>
       </Link>
       
-      {/* Indicador del colegio logueado */}
       {establecimiento && (
         <div className="flex items-center gap-4">
-          <span className="text-sm font-medium bg-[#004b8a] px-3 py-1.5 rounded-lg border border-blue-400/30">
-            🏢 {establecimiento.nombre}
-          </span>
+          <div className="bg-[#004b8a] px-3 py-1.5 rounded-lg border border-blue-400/30 text-right">
+            <p className="text-sm font-bold">🏢 {establecimiento.nombre}</p>
+            <p className="text-xs text-blue-200">{usuarioCorreo}</p>
+          </div>
           <button 
             onClick={manejarSalida}
-            className="text-sm bg-red-500 hover:bg-red-600 px-4 py-1.5 rounded-lg transition-colors font-bold shadow-sm"
+            className="text-sm bg-red-500 hover:bg-red-600 px-4 py-3 rounded-lg transition-colors font-bold shadow-sm h-full"
           >
             Salir
           </button>

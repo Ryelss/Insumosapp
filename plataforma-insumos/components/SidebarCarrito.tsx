@@ -60,12 +60,15 @@ export default function SidebarCarrito() {
         await supabase.from('tintas').update({ cantidad: nuevoStock }).eq('id', item.id);
       }
 
-      // 4. NUEVO: ENVIAR CORREO A ADMIN
+// 4. ENVIAR CORREO A ADMIN (Añadimos el correo de quien solicita)
+      const usuarioCorreo = useCartStore.getState().usuarioCorreo; // Extraemos el correo actual
+
       await fetch('/api/enviar-correo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           establecimiento: establecimiento.nombre,
+          correoSolicitante: usuarioCorreo, // <-- Pasamos el dato a la API
           detalles: carrito
         })
       });
