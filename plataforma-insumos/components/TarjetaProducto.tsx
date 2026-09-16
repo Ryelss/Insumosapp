@@ -12,18 +12,19 @@ export default function TarjetaProducto({ tinta }: { tinta: any }) {
   // Matemáticas en tiempo real: Stock original - lo que ya metí al carro
   const stockDisponible = tinta.cantidad - cantidadEnCarro;
 
+// components/TarjetaProducto.tsx (Solo reemplaza la parte del return)
+// ...
   return (
     <div className="border border-gray-200 p-5 rounded-xl shadow-sm bg-white hover:shadow-lg transition-shadow flex flex-col justify-between h-full">
       <div>
-        {/* Etiqueta de marca estilo PC Factory */}
+        {/* Usamos directamente la columna 'marca' de tu base de datos */}
         <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">
-          {tinta.nombre_producto.includes('BROTHER') ? 'BROTHER' : 
-           tinta.nombre_producto.includes('CANON') ? 'CANON' : 'GENÉRICO'}
+          {tinta.marca || 'GENÉRICO'}
         </span>
         <h2 className="font-semibold text-gray-800 leading-tight mb-4">
           {tinta.nombre_producto}
         </h2>
-        
+       
         <div className="flex justify-between items-end mb-4">
           <p className="text-sm text-gray-500">
             Stock actual:<br/>

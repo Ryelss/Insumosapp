@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 
-// Definimos la estructura de los datos
 interface Tinta {
   id: number;
   nombre_producto: string;
   cantidad: number;
+  marca: string; // <-- Nueva columna
+  tipo: string;  // <-- Nueva columna
 }
-
 interface CartItem extends Tinta {
   cantidadCarrito: number;
 }
