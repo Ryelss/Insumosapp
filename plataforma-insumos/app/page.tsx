@@ -1,28 +1,21 @@
 import { supabase } from '@/lib/supabase';
 import Navbar from '@/components/Navbar';
-import CatalogoFiltrado from '@/components/CatalogoFiltrado'; // Importamos el nuevo componente
+import VistaPrincipal from '@/components/VistaPrincipal';
 
-export default async function Home() {
-  // Extraemos todos los datos desde Supabase
-  const { data: tintas, error } = await supabase.from('tintas').select('*');
+export const dynamic = 'force-dynamic';
 
-  if (error) {
-    return <div className="p-10 text-red-500">Error: {error.message}</div>;
-  }
+export default async function HomePage() {
+  // Traemos ambos datos directamente en el servidor
+  const { data: tintas } = await supabase.from('tintas').select('*').order('nombre_producto', { ascending: true });
+  const { data: establecimientos } = await supabase.from('establecimientos').select('*').order('nombre', { ascending: true });
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      
-      <main className="max-w-7xl mx-auto p-6 md:p-10">
-        <div className="mb-8 border-b pb-4">
-          <h2 className="text-2xl font-bold text-gray-800">Catálogo de Suministros</h2>
-          <p className="text-gray-500 mt-1">Seleccione los insumos requeridos para su establecimiento.</p>
-        </div>
-        
-        {/* Aquí insertamos el componente que maneja los filtros y la grilla, pasándole las tintas */}
-        <CatalogoFiltrado tintas={tintas || []} />
-      </main>
+      <VistaPrincipal 
+        tintas={tintas || []} 
+        establecimientos={establecimientos || []} 
+      />
     </div>
   );
 }

@@ -4,35 +4,57 @@ import { useCartStore } from '@/store/useCartStore';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase'; // <-- Importamos tu conexión a la base de datos
+import { supabase } from '@/lib/supabase';
 
 export default function ResumenCarrito({ establecimientos }: { establecimientos: any[] }) {
   const { carrito, removerDelCarrito, limpiarCarrito } = useCartStore();
   const [establecimientoSeleccionado, setEstablecimientoSeleccionado] = useState('');
-  const [enviando, setEnviando] = useState(false); // Para mostrar que está cargando
+  const [enviando, setEnviando] = useState(false);
   const router = useRouter();
 
-  const manejarEnvio = async (e: React.FormEvent) => {
+const manejarEnvio = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!establecimientoSeleccionado) {
-      alert("⚠️ Por favor, seleccione un establecimiento antes de solicitar.");
+      alert("⚠️ Por favor, seleccione un establecimiento.");
       return;
     }
     
     setEnviando(true);
 
     try {
-      // 1. Crear la Solicitud Principal (Cabecera)
+      // 1. Convertimos el valor del select a NÚMERO para que coincida con el BIGINT de Supabase
+      const rbdNumero = Number(establecimientoSeleccionado);
+
+      // 2. VALIDACIÓN ESTRICTA: 1 SOLICITUD SEMANAL
+      const haceUnaSemana = new Date();
+      haceUnaSemana.setDate(haceUnaSemana.getDate() - 7);
+      
+      const { data: peticionesPrevias, error: errorCheck } = await supabase
+        .from('solicitudes')
+        .select('id, fecha')
+        .eq('establecimiento_rbd', rbdNumero) // Usamos el número convertido
+        .gte('fecha', haceUnaSemana.toISOString());
+
+      if (errorCheck) throw errorCheck;
+
+      // Si encuentra al menos 1 registro en los últimos 7 días, bloquea el proceso
+      if (peticionesPrevias && peticionesPrevias.length > 0) {
+        alert("🚫 SOLICITUD RECHAZADA: Este establecimiento ya realizó un pedido de insumos en los últimos 7 días. Por favor, espere a la próxima semana.");
+        setEnviando(false);
+        return; 
+      }
+
+      // 3. Crear la Solicitud
       const { data: solicitud, error: errorSolicitud } = await supabase
         .from('solicitudes')
-        .insert([{ establecimiento_rbd: establecimientoSeleccionado }]) // Usamos el RBD
+        .insert([{ establecimiento_rbd: rbdNumero }])
         .select()
-        .single(); // Pedimos que nos devuelva el ID que se acaba de crear
+        .single();
 
       if (errorSolicitud) throw errorSolicitud;
 
-      // 2. Preparar y guardar el Detalle de lo solicitado
+      // 4. Guardar Detalle
       const detalles = carrito.map((item) => ({
         solicitud_id: solicitud.id,
         tinta_id: item.id,
@@ -45,7 +67,7 @@ export default function ResumenCarrito({ establecimientos }: { establecimientos:
 
       if (errorDetalles) throw errorDetalles;
 
-      // 3. Descontar el stock real de la tabla 'tintas'
+      // 5. Descontar stock
       for (const item of carrito) {
         const nuevoStock = item.cantidad - item.cantidadCarrito;
         
@@ -57,23 +79,19 @@ export default function ResumenCarrito({ establecimientos }: { establecimientos:
         if (errorStock) console.error("Error al actualizar stock de:", item.nombre_producto);
       }
 
-      // 4. Éxito: Limpiamos y volvemos al inicio
-      alert("✅ ¡Solicitud ingresada con éxito! El stock ha sido actualizado.");
+      alert("✅ ¡Solicitud ingresada con éxito al departamento TI! El stock ha sido actualizado.");
       limpiarCarrito();
       router.push('/');
-      
-      // Forzamos una recarga limpia para que el catálogo muestre el nuevo stock al volver
       router.refresh();
 
     } catch (error: any) {
       console.error("Error en el proceso:", error);
-      alert("❌ Ocurrió un error al enviar la solicitud: " + error.message);
+      alert("❌ Ocurrió un error: " + error.message);
     } finally {
       setEnviando(false);
     }
   };
 
-  // Si el carro está vacío
   if (carrito.length === 0) {
     return (
       <div className="text-center py-20 bg-white rounded-xl shadow-sm border border-gray-200">
@@ -89,7 +107,6 @@ export default function ResumenCarrito({ establecimientos }: { establecimientos:
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      {/* COLUMNA IZQUIERDA: Lista de Insumos */}
       <div className="lg:col-span-2 space-y-4">
         <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Insumos Solicitados</h3>
         {carrito.map((item) => (
@@ -114,10 +131,8 @@ export default function ResumenCarrito({ establecimientos }: { establecimientos:
         ))}
       </div>
 
-      {/* COLUMNA DERECHA: Formulario de Envío */}
       <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200 h-fit">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Confirmar Solicitud</h3>
-        
         <form onSubmit={manejarEnvio} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -132,11 +147,12 @@ export default function ResumenCarrito({ establecimientos }: { establecimientos:
             >
               <option value="" disabled>-- Seleccione su establecimiento --</option>
               {establecimientos.map((est) => (
-                <option key={est.rbd} value={est.rbd}> {/* <- AHORA USA EL RBD AQUÍ */}
+                <option key={est.rbd} value={est.rbd}>
                   {est.nombre}
                 </option>
               ))}
             </select>
+            <p className="text-xs text-gray-500 mt-2">* Límite de 1 solicitud semanal por establecimiento.</p>
           </div>
 
           <div className="border-t pt-4">
@@ -147,7 +163,7 @@ export default function ResumenCarrito({ establecimientos }: { establecimientos:
                 enviando ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 hover:shadow-lg"
               }`}
             >
-              {enviando ? "Procesando..." : "Enviar Solicitud al DAEM"}
+              {enviando ? "Verificando y Procesando..." : "Enviar Solicitud al DAEM"}
             </button>
             <Link href="/" className="block text-center w-full text-blue-600 font-medium py-3 mt-2 hover:bg-blue-50 rounded-lg transition-all">
               Seguir buscando insumos
