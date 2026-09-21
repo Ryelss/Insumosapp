@@ -109,7 +109,7 @@ export default function VistaPrincipal({ tintas, establecimientos }: { tintas: a
   }
 
   return (
-    <main className="max-w-[1600px] w-full mx-auto p-6 md:p-10 flex flex-col lg:flex-row gap-10 xl:gap-14">
+    <main className="max-w-[1600px] w-full mx-auto p-4 md:p-8 lg:p-10 flex flex-col lg:flex-row gap-8 xl:gap-14">
       <div className="flex-1 min-w-0">
         <div className="mb-8 pb-4 border-b border-gray-200">
           <h2 className="text-4xl font-extrabold text-[#005EAD] tracking-tight">Catálogo de Suministros</h2>

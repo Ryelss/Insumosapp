@@ -14,8 +14,6 @@ export default function SidebarCarrito() {
 
   const manejarEnvio = async () => {
     if (!establecimiento || carrito.length === 0) return;
-    
-    // Validación extra de seguridad
     if (totalItems > 25) {
       alert("⚠️ Ha superado el límite de 25 insumos por pedido.");
       return;
@@ -24,7 +22,6 @@ export default function SidebarCarrito() {
     setEnviando(true);
 
     try {
-      // 1. VALIDACIÓN: 1 PEDIDO A LA SEMANA
       const haceUnaSemana = new Date();
       haceUnaSemana.setDate(haceUnaSemana.getDate() - 7);
       
@@ -42,7 +39,6 @@ export default function SidebarCarrito() {
         return; 
       }
 
-      // 2. CREAR SOLICITUD EN BASE DE DATOS
       const { data: solicitud, error: errorSolicitud } = await supabase
         .from('solicitudes')
         .insert([{ establecimiento_rbd: establecimiento.rbd }])
@@ -50,7 +46,6 @@ export default function SidebarCarrito() {
         .single();
       if (errorSolicitud) throw errorSolicitud;
 
-      // 3. GUARDAR DETALLE Y DESCONTAR STOCK
       const detalles = carrito.map(item => ({ solicitud_id: solicitud.id, tinta_id: item.id, cantidad: item.cantidadCarrito }));
       const { error: errorDetalles } = await supabase.from('detalle_solicitudes').insert(detalles);
       if (errorDetalles) throw errorDetalles;
@@ -60,15 +55,14 @@ export default function SidebarCarrito() {
         await supabase.from('tintas').update({ cantidad: nuevoStock }).eq('id', item.id);
       }
 
-// 4. ENVIAR CORREO A ADMIN (Añadimos el correo de quien solicita)
-      const usuarioCorreo = useCartStore.getState().usuarioCorreo; // Extraemos el correo actual
+      const usuarioCorreo = useCartStore.getState().usuarioCorreo;
 
       await fetch('/api/enviar-correo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           establecimiento: establecimiento.nombre,
-          correoSolicitante: usuarioCorreo, // <-- Pasamos el dato a la API
+          correoSolicitante: usuarioCorreo,
           detalles: carrito
         })
       });
@@ -85,19 +79,20 @@ export default function SidebarCarrito() {
     }
   };
 
+  // CAMBIO AQUÍ: Quitamos hidden lg:block y ponemos lg:sticky
   if (carrito.length === 0) {
     return (
-      <div className="bg-gray-50 p-6 rounded-xl border border-dashed border-gray-300 text-center sticky top-24 hidden lg:block">
+      <div className="bg-gray-50 p-6 rounded-xl border border-dashed border-gray-300 text-center lg:sticky lg:top-24 mb-10 lg:mb-0">
         <span className="text-3xl block mb-2 opacity-50">🛒</span>
         <p className="text-sm font-medium text-gray-500">Agregue insumos para solicitar</p>
       </div>
     );
   }
 
+  // CAMBIO AQUÍ: Quitamos hidden lg:block, ajustamos sticky y márgenes
   return (
-    <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-100 sticky top-24 hidden lg:block">
+    <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-100 lg:sticky lg:top-24 mb-10 lg:mb-0">
       
-      {/* EL CARTEL DE REGLAS */}
       <div className="bg-orange-50 border-l-4 border-[#F09B1A] p-3 mb-5 rounded-r text-sm text-orange-900 shadow-sm">
         <strong>⚠️ Políticas de Pedido:</strong>
         <ul className="list-disc ml-5 mt-1">
@@ -108,7 +103,7 @@ export default function SidebarCarrito() {
 
       <h3 className="text-base font-bold text-[#005EAD] mb-4 border-b pb-2 flex justify-between items-center">
         <span>Resumen del Pedido</span>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           <button onClick={limpiarCarrito} className="text-xs text-red-500 hover:text-red-700 font-bold underline transition-colors">
             Vaciar Todo
           </button>
