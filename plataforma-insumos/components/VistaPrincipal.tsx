@@ -1,7 +1,7 @@
 "use client";
 
 import { useCartStore } from '@/store/useCartStore';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import CatalogoFiltrado from './CatalogoFiltrado';
 import SidebarCarrito from './SidebarCarrito';
 
@@ -11,40 +11,56 @@ export default function VistaPrincipal({ tintas, establecimientos }: { tintas: a
   const limpiarCarrito = useCartStore((state) => state.limpiarCarrito);
   
   const [seleccion, setSeleccion] = useState("");
-  const [correoInput, setCorreoInput] = useState(""); // Estado para el correo
+  const [correoInput, setCorreoInput] = useState("");
   const [montado, setMontado] = useState(false);
   
+  // NUEVO: Estados para el temporizador visual
+  const [tiempoRestante, setTiempoRestante] = useState(300); // 300 segundos = 5 minutos
+  const ultimaActividad = useRef<number>(0);
+
   useEffect(() => setMontado(true), []);
 
-  // TEMPORIZADOR DE INACTIVIDAD
+  // TEMPORIZADOR VISUAL E INACTIVIDAD
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
+    if (!establecimiento) return;
 
-    const reiniciarTemporizador = () => {
-      clearTimeout(timeout);
-      if (establecimiento) {
-        timeout = setTimeout(() => {
-          alert("⏳ Sesión cerrada por inactividad. Por seguridad, su selección ha sido cancelada.");
-          limpiarCarrito();
-          setSesion(null, null); // Cerramos sesión completa
-        }, 5 * 60 * 1000); 
-      }
+    const TIEMPO_LIMITE = 300; // 5 minutos
+    ultimaActividad.current = Date.now();
+    setTiempoRestante(TIEMPO_LIMITE);
+
+    // Registra la actividad de forma silenciosa para no saturar la pantalla
+    const registrarActividad = () => {
+      ultimaActividad.current = Date.now();
     };
 
-    if (establecimiento) {
-      reiniciarTemporizador();
-      window.addEventListener('mousemove', reiniciarTemporizador);
-      window.addEventListener('keydown', reiniciarTemporizador);
-      window.addEventListener('click', reiniciarTemporizador);
-      window.addEventListener('scroll', reiniciarTemporizador);
-    }
+    // Eventos que reinician el reloj
+    window.addEventListener('mousemove', registrarActividad);
+    window.addEventListener('keydown', registrarActividad);
+    window.addEventListener('click', registrarActividad);
+    window.addEventListener('scroll', registrarActividad);
+
+    // Un reloj que revisa cada 1 segundo cuánto tiempo ha pasado
+    const intervalo = setInterval(() => {
+      const ahora = Date.now();
+      const segundosPasados = Math.floor((ahora - ultimaActividad.current) / 1000);
+      const restante = TIEMPO_LIMITE - segundosPasados;
+
+      if (restante <= 0) {
+        clearInterval(intervalo);
+        alert("⏳ Sesión cerrada por inactividad. Por seguridad, su selección ha sido cancelada.");
+        limpiarCarrito();
+        setSesion(null, null);
+      } else {
+        setTiempoRestante(restante);
+      }
+    }, 1000);
 
     return () => {
-      clearTimeout(timeout);
-      window.removeEventListener('mousemove', reiniciarTemporizador);
-      window.removeEventListener('keydown', reiniciarTemporizador);
-      window.removeEventListener('click', reiniciarTemporizador);
-      window.removeEventListener('scroll', reiniciarTemporizador);
+      clearInterval(intervalo);
+      window.removeEventListener('mousemove', registrarActividad);
+      window.removeEventListener('keydown', registrarActividad);
+      window.removeEventListener('click', registrarActividad);
+      window.removeEventListener('scroll', registrarActividad);
     };
   }, [establecimiento, limpiarCarrito, setSesion]);
 
@@ -52,7 +68,6 @@ export default function VistaPrincipal({ tintas, establecimientos }: { tintas: a
     e.preventDefault();
     const est = establecimientos.find(e => e.rbd === Number(seleccion));
     
-    // Validación de seguridad para asegurar que pongan un correo válido
     if (!correoInput.includes('@')) {
       alert("⚠️ Por favor, ingrese un correo válido.");
       return;
@@ -62,6 +77,11 @@ export default function VistaPrincipal({ tintas, establecimientos }: { tintas: a
       setSesion({ rbd: est.rbd, nombre: est.nombre }, correoInput);
     }
   };
+
+  // Cálculos matemáticos para mostrar el tiempo en formato MM:SS
+  const minutos = Math.floor(tiempoRestante / 60);
+  const segundos = tiempoRestante % 60;
+  const tiempoFormateado = `${minutos}:${segundos < 10 ? '0' : ''}${segundos}`;
 
   if (!montado) return null;
 
@@ -111,11 +131,27 @@ export default function VistaPrincipal({ tintas, establecimientos }: { tintas: a
   return (
     <main className="max-w-[1600px] w-full mx-auto p-4 md:p-8 lg:p-10 flex flex-col lg:flex-row gap-8 xl:gap-14">
       <div className="flex-1 min-w-0">
-        <div className="mb-8 pb-4 border-b border-gray-200">
-          <h2 className="text-4xl font-extrabold text-[#005EAD] tracking-tight">Catálogo de Suministros</h2>
+        
+        {/* ENCABEZADO CON CONTADOR INCORPORADO */}
+        <div className="mb-8 pb-4 border-b border-gray-200 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-[#005EAD] tracking-tight">Catálogo de Suministros</h2>
+          </div>
+          
+          {/* EL CONTADOR VISUAL */}
+          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-all duration-300 ${
+            tiempoRestante <= 60 
+              ? 'bg-red-100 text-red-700 border border-red-300 animate-pulse' // Rojo parpadeante al último minuto
+              : 'bg-blue-50 text-blue-700 border border-blue-200'
+          }`}>
+            <span>⏳ Expira en:</span>
+            <span className="text-lg tabular-nums">{tiempoFormateado}</span>
+          </div>
         </div>
+
         <CatalogoFiltrado tintas={tintas} />
       </div>
+      
       <aside className="w-full lg:w-[400px] flex-shrink-0">
         <SidebarCarrito />
       </aside>
