@@ -14,8 +14,8 @@ export default function VistaPrincipal({ tintas, establecimientos }: { tintas: a
   const [correoInput, setCorreoInput] = useState("");
   const [montado, setMontado] = useState(false);
   
-  // NUEVO: Estados para el temporizador visual
-  const [tiempoRestante, setTiempoRestante] = useState(300); // 300 segundos = 5 minutos
+  // CAMBIO AQUÍ: Iniciamos el estado en 900 segundos (15 minutos)
+  const [tiempoRestante, setTiempoRestante] = useState(900); 
   const ultimaActividad = useRef<number>(0);
 
   useEffect(() => setMontado(true), []);
@@ -24,22 +24,20 @@ export default function VistaPrincipal({ tintas, establecimientos }: { tintas: a
   useEffect(() => {
     if (!establecimiento) return;
 
-    const TIEMPO_LIMITE = 300; // 5 minutos
+    // CAMBIO AQUÍ: Límite actualizado a 15 minutos (900 segundos)
+    const TIEMPO_LIMITE = 900; 
     ultimaActividad.current = Date.now();
     setTiempoRestante(TIEMPO_LIMITE);
 
-    // Registra la actividad de forma silenciosa para no saturar la pantalla
     const registrarActividad = () => {
       ultimaActividad.current = Date.now();
     };
 
-    // Eventos que reinician el reloj
     window.addEventListener('mousemove', registrarActividad);
     window.addEventListener('keydown', registrarActividad);
     window.addEventListener('click', registrarActividad);
     window.addEventListener('scroll', registrarActividad);
 
-    // Un reloj que revisa cada 1 segundo cuánto tiempo ha pasado
     const intervalo = setInterval(() => {
       const ahora = Date.now();
       const segundosPasados = Math.floor((ahora - ultimaActividad.current) / 1000);
@@ -78,7 +76,6 @@ export default function VistaPrincipal({ tintas, establecimientos }: { tintas: a
     }
   };
 
-  // Cálculos matemáticos para mostrar el tiempo en formato MM:SS
   const minutos = Math.floor(tiempoRestante / 60);
   const segundos = tiempoRestante % 60;
   const tiempoFormateado = `${minutos}:${segundos < 10 ? '0' : ''}${segundos}`;
@@ -132,16 +129,14 @@ export default function VistaPrincipal({ tintas, establecimientos }: { tintas: a
     <main className="max-w-[1600px] w-full mx-auto p-4 md:p-8 lg:p-10 flex flex-col lg:flex-row gap-8 xl:gap-14">
       <div className="flex-1 min-w-0">
         
-        {/* ENCABEZADO CON CONTADOR INCORPORADO */}
         <div className="mb-8 pb-4 border-b border-gray-200 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
           <div>
             <h2 className="text-3xl md:text-4xl font-extrabold text-[#005EAD] tracking-tight">Catálogo de Suministros</h2>
           </div>
           
-          {/* EL CONTADOR VISUAL */}
           <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-all duration-300 ${
             tiempoRestante <= 60 
-              ? 'bg-red-100 text-red-700 border border-red-300 animate-pulse' // Rojo parpadeante al último minuto
+              ? 'bg-red-100 text-red-700 border border-red-300 animate-pulse' 
               : 'bg-blue-50 text-blue-700 border border-blue-200'
           }`}>
             <span>⏳ Expira en:</span>
